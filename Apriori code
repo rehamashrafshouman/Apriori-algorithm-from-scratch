@@ -1,0 +1,288 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[28]:
+
+
+#function 1         text >> list  
+import numpy as np
+def read () : 
+  transactions = [] 
+  f = open("new_data.txt",'r')  # ticdata2000
+  f1 = f.readlines();
+  for row in f1: 
+    columns =  row.split('	')
+    for column in range (0,len(columns)):
+      columns[column] = int(columns[column])
+    transactions.append(columns)
+  return np.array(transactions)
+
+
+# In[29]:
+
+
+#function        vector of numbers >> each number in the vector without redundancy
+"""
+from collections import Counter
+def get_unique_data_numbers(input_arr):
+    result = np.unique(input_arr)
+    return result.tolist()
+"""
+
+
+# In[30]:
+
+
+#function 2        vector of numbers  >> freq (vector)   for one attribute 
+def get_freq_unique_data_numbers(input_arr, char, minSupport, noTransactions):
+    from collections import Counter
+    input_list = input_arr.tolist()
+    counter = Counter(input_list)
+    out = []
+    number_to_freq = [list(counter.keys()), list(counter.values())]
+   
+    #filter
+    numbers = np.array(number_to_freq[0])
+    support = np.array(((np.array(number_to_freq[1])/noTransactions)*100))
+    
+    r = (support >= minSupport)
+    numbers = list(numbers[r])
+    support = list(support[r])
+    for i in range (0 , len (support)):
+        out.append([char +str (numbers[i]),support[i]])
+    
+    return out  
+
+
+# In[31]:
+
+
+#function 3  discard below the min support   take above and apply on all attributes
+def get_list_above_min_support(min):
+  temp = read ()
+  att = []
+  chars = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'] 
+  for i in range (0,12):
+    att.extend(np.array(get_freq_unique_data_numbers(temp[:,i], chars[i],min, temp.shape[0])))
+  if len(att) ==0:
+    return att
+  else :
+    return list(np.array(att)[:,0]) 
+
+
+# In[32]:
+
+
+#function 4       list of string items >> all combination
+
+from itertools import combinations 
+
+def get_combinations (list_attr, noCombinations):
+  temp = list(combinations(list(set(list_attr)), noCombinations))
+  output = []
+  for i in range (0 , len (temp)):
+    if temp[i][0][0] != temp[i][1][0] :
+      output.append(temp[i])
+
+  return np.array(output)
+
+
+# In[33]:
+
+
+#function 5       list of attributes >> number of existence of this attributes in all transactions
+def intersection (X,L):
+  for i in range (0,len(L)):
+    col , indix = getindex(L[i])
+    X = X[X[:,col] ==indix]
+  return X.shape[0]
+
+
+# In[34]:
+
+
+#function 6       attribute (letter and number) >> attribute (index col and number)
+
+def getindex (arr ):
+  col = 0
+  if ( arr [0] == 'A' ) :
+             col=0
+  elif ( arr [0] == 'B' ) :
+             col=1
+  elif ( arr [0] == 'C' ) :
+             col=2
+  elif ( arr [0] == 'D' ) :
+             col=3
+  elif ( arr [0] == 'E' ) :
+             col=4
+  elif ( arr [0] == 'F' ) :
+             col=5
+  elif ( arr [0] == 'G' ) :
+             col=6
+  elif ( arr [0] == 'H' ) :
+             col=7
+  elif ( arr [0] == 'I' ) :
+             col=8
+  elif ( arr [0] == 'J' ) :
+             col=9
+  elif ( arr [0] == 'K' ) :
+             col=10
+  elif ( arr [0] == 'L' ) :
+             col=11
+  return int (col) , int (arr[1:])
+
+
+# In[35]:
+
+
+#function 7    general one     output list greater that min
+def filter (min_support,no_of_tra,L):
+  out_1 = []
+  out_2=[]
+  for i in range (0,L.shape[0]):
+    t = list (L[i])
+    if ( (intersection(read(),t ) / no_of_tra)*100  )  >= min_support :
+      out_1.extend(t) 
+      out_2.append(t) 
+  return out_1,out_2    
+
+
+# In[36]:
+
+
+# function 8    lift and leverage
+def lift_leverge (lis,no_of_t) : 
+  o =[]
+  o=[lis[0]+lis[1]]
+  liftout = [] 
+  leverge_out = [] 
+  for k in range (len (o)):
+    d = 1 
+    for m in range (len(o[k]) ):
+        rita = []
+        rita.append( o[k][m] )
+        d*= (intersection (read(),rita) / no_of_t )
+    n = intersection (read(),o[k]) / no_of_t
+    liftout.append (n/d)
+    leverge_out.append(n-d)
+  return liftout , leverge_out
+
+
+# In[37]:
+
+
+#function 9 
+def association_rules(output , min_conf):
+    finaloutputrita = []
+    final  =[]
+    for i in range (len(output)):
+      temp = list(output) 
+      element = output [i]
+      temp.pop(i)
+      rita = []
+      rita.append(element)
+      final.append([[element],temp])   
+    for k in range (2,len(output)):       
+      left = get_combinations (output, k)  
+      for g in range (len(left)):
+        right = list(set(output) -set(left[g]))
+        final.append([list(left[g]),right])  
+    for i in range (len(final)):
+      temp = list(final[i][0])
+      temp.extend(final[i][1]) 
+      if  intersection (read(),temp) / intersection (  read(),final[i][0] )     >=(min_conf/100) :
+          finaloutputrita.append(final[i])
+    return finaloutputrita 
+
+
+# In[38]:
+
+
+#function 10
+def mapping (columns,attr):
+    final=[]
+    for col in columns:
+        tran=''
+        #col=str(col[0])
+        #print(col)
+        if col[0]=='A':
+            tran=attr[0]
+        elif col[0]=='B':
+            tran=attr[1]
+        elif col[0]=='C':
+            tran=attr[2]
+        elif col[0]=='D':
+            tran=attr[3]    
+        elif col[0]=='E':
+            tran=attr[4]
+        elif col[0]=='F':
+            tran=attr[5]
+        elif col[0]=='G':
+            tran=attr[6]
+        elif col[0]=='H':
+            tran=attr[7]
+        elif col[0]=='I':
+            tran=attr[8]
+        elif col[0]=='J':
+            tran=attr[9]
+        elif col[0]=='K':
+            tran=attr[10]
+        elif col[0]=='L':
+            tran=attr[11]
+        else:
+            tran='wala haga'
+        
+        final.append(tran+" "+col[1]+" ")
+    return final
+
+
+# In[42]:
+
+
+def main () :
+  attr=['MGODPR Protestant','MGODOV Other religion','MGODGE No religion', 'MRELGE Married','MRELSA Living together','MRELOV Other relation',' MFALLEEN Singles','MFGEKIND Household without children','MFWEKIND Household with children','MOPLHOOG High level education','MOPLMIDD Medium level education','MOPLLAAG Lower level education']
+  minsupport=0
+  confidence=0
+  output = 0
+  numb_of_transaction=5822   #5822  all transactions (all rows)
+  lift=[]
+  leverage=[]
+  menna = []
+  result=[]
+  minsupport=int(input("Please enter min support in percentage : "))
+  confidence=int(input("Please enter confidence in percentage : "))
+  temp = read()
+  first = get_list_above_min_support(minsupport)
+  x = get_combinations (first,2)
+  x1,x2 = filter (minsupport,numb_of_transaction,x)  
+  counter = 3
+  if x == [] : 
+    output = x2 
+  else :
+    while 1 : 
+      output = x2 
+      x = get_combinations (x1,counter)
+      x1,x2 = filter (minsupport,numb_of_transaction,x)  
+      counter += 1 
+      if x1 == []:
+        break       
+  ####output combination that greater than min support     
+  for i in output:
+    result.append( association_rules(i,confidence))
+  if len(result)==0 :
+    print("NO association rules ")  
+  for i in result:
+    menna.extend(i) 
+  for i in menna:
+    l,le= lift_leverge(i,numb_of_transaction)
+    lift.extend(l)     
+    leverage.extend(le) 
+  for i in range (len(menna)) :
+    m= lift.index(max(lift))
+    print(str(mapping(menna[m][0],attr))+'--->'+str(mapping(menna[m][1],attr))+"  The lift  "+str(lift[m])+"  and the leverage"+str(leverage[m]))
+    menna.pop(m)
+    lift.pop(m)
+    leverage.pop(m)
+
+
+main() 
